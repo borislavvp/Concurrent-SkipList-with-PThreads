@@ -105,10 +105,11 @@ public:
 
     virtual ~skiplist()
     {
+        NodeType *tempNode;
         NodeType *currNode = m_pHeader->forwards[1];
         while (currNode != m_pTail)
         {
-            NodeType *tempNode = currNode;
+            tempNode = currNode;
             currNode = currNode->forwards[1];
             delete tempNode;
         }
@@ -116,137 +117,28 @@ public:
         delete m_pTail;
     }
 
-    // void insert(K searchKey, V newValue)
-    // {
-
-    //     skiplist_node<K, V, MAXLEVEL> *update[MAXLEVEL];
-    //     NodeType *currNode = m_pHeader;
-    //     for (int level = max_curr_level; level >= 1; level--)
-    //     {
-    //         while (currNode->forwards[level]->key < searchKey)
-    //         {
-    //             currNode = currNode->forwards[level];
-    //         }
-    //         update[level] = currNode;
-    //         update[level]->lock();
-    //         update[level]->forwards[level]->lock();
-    //     }
-    //     currNode = currNode->forwards[1];
-
-    //     if (currNode->key == searchKey)
-    //     {
-    //         currNode->value = newValue;
-    //         for (int lv = 1; lv <= max_curr_level; lv++)
-    //         {
-    //             update[lv]->unlock();
-    //             // update[lv]->forwards[lv]->unlock();
-    //         }
-    //         // cout << "UNLOCKED" << endl;
-    //         // pthread_mutex_unlock(&listLock);
-    //         return;
-    //     }
-    //     else
-    //     {
-    //         int newlevel = randomLevel();
-    //         if (newlevel > max_curr_level)
-    //         {
-    //             for (int level = max_curr_level + 1; level <= newlevel; level++)
-    //             {
-    //                 update[level] = m_pHeader;
-    //                 update[level]->lock();
-    //                 // update[level]->forwards[level]->lock();
-    //             }
-    //             max_curr_level = newlevel;
-    //         }
-    //         currNode = new NodeType(searchKey, newValue);
-    //         for (int lv = 1; lv <= max_curr_level; lv++)
-    //         {
-    //             // update[lv]->forwards[lv]->lock();
-    //             currNode->forwards[lv] = update[lv]->forwards[lv];
-    //             update[lv]->forwards[lv] = currNode;
-    //             // currNode->forwards[lv]->unlock();
-    //             update[lv]->unlock();
-    //         }
-    //         // cout << "UNLOCKED" << endl;
-    //         // pthread_mutex_unlock(&listLock);
-    //     }
-    // }
-    // void insert(K searchKey, V newValue)
-    // {
-
-    //     skiplist_node<K, V, MAXLEVEL> *succs[MAXLEVEL];
-    //     skiplist_node<K, V, MAXLEVEL> *preds[MAXLEVEL];
-    //     NodeType *predNode = m_pHeader;
-    //     NodeType *currNode;
-    //     for (int level = max_curr_level; level >= 1; level--)
-    //     {
-    //         currNode = predNode->forwards[level];
-    //         while (currNode->key < searchKey)
-    //         {
-    //             predNode = currNode;
-    //             currNode = predNode->forwards[level];
-    //         }
-    //         preds[level] = predNode;
-    //         succs[level] = currNode;
-    //         preds[level]->lock();
-    //         succs[level]->lock();
-    //     }
-    //     if (currNode->key == searchKey)
-    //     {
-    //         currNode->value = newValue;
-    //         for (int lv = 1; lv <= max_curr_level; lv++)
-    //         {
-    //             preds[lv]->unlock();
-    //             succs[lv]->unlock();
-    //         }
-    //         // cout << "UNLOCKED" << endl;
-    //         // pthread_mutex_unlock(&listLock);
-    //         return;
-    //     }
-    //     else
-    //     {
-    //         int newlevel = randomLevel();
-    //         if (newlevel > max_curr_level)
-    //         {
-    //             for (int level = max_curr_level + 1; level <= newlevel; level++)
-    //             {
-    //                 preds[level] = m_pHeader;
-    //                 succs[level] = m_pHeader;
-
-    //                 preds[level]->lock();
-    //                 succs[level]->lock();
-    //                 // update[level]->forwards[level]->lock();
-    //             }
-    //             max_curr_level = newlevel;
-    //         }
-    //         currNode = new NodeType(searchKey, newValue);
-    //         for (int lv = 1; lv <= max_curr_level; lv++)
-    //         {
-    //             currNode->forwards[lv] = preds[lv]->forwards[lv];
-    //             preds[lv]->forwards[lv] = currNode;
-    //             // currNode->forwards[lv]->unlock();
-
-    //             // succs[lv]->unlock();
-    //         }
-    //         for (int level = 1; level <= max_curr_level; level++)
-    //         {
-    //             preds[level]->unlock();
-    //             succs[level]->unlock();
-    //         }
-    //         // cout << "UNLOCKED" << endl;
-    //         // pthread_mutex_unlock(&listLock);
-    //     }
-    // }
     void insert(K searchKey, V newValue)
     {
 
+        int newlevel = randomLevel();
+        int level;
+
+        skiplist_node<K, V, MAXLEVEL> *succs[MAXLEVEL];
+        skiplist_node<K, V, MAXLEVEL> *preds[MAXLEVEL];
+
+        NodeType *predNode = m_pHeader;
+        NodeType *currNode;
+        NodeType *succNode;
+
+        int highestLocked = 0;
+
+        bool valid = true;
+
         while (true)
         {
-            skiplist_node<K, V, MAXLEVEL> *succs[MAXLEVEL];
-            skiplist_node<K, V, MAXLEVEL> *preds[MAXLEVEL];
-            NodeType *predNode = m_pHeader;
-            NodeType *currNode;
-            for (int level = MAXLEVEL; level >= 1; level--)
+
+            predNode = m_pHeader;
+            for (level = MAXLEVEL; level >= 1; level--)
             {
                 currNode = predNode->forwards[level];
                 while (currNode->key < searchKey)
@@ -264,49 +156,41 @@ public:
                 return;
             }
 
-            int newlevel = randomLevel();
-            int highestLocked = 0;
             try
             {
                 if (newlevel > max_curr_level)
                 {
                     max_curr_level = newlevel;
                 }
-                NodeType *succNode;
-                bool valid = true;
-                for (int level = 1; valid && (level <= newlevel); level++)
+
+                for (level = 1; valid && (level <= newlevel); level++)
                 {
                     predNode = preds[level];
                     predNode->lock();
                     succNode = succs[level];
-                    succNode->lock();
                     highestLocked = level;
                     valid = predNode->forwards[level] == succNode;
                 }
                 if (!valid)
                 {
-                    for (int level = 1; level <= highestLocked; level++)
+                    for (level = 1; level <= highestLocked; level++)
                     {
                         preds[level]->unlock();
-                        succs[level]->unlock();
                     }
                     continue;
                 }
 
                 currNode = new NodeType(searchKey, newValue);
 
-                for (int level = 1; level <= newlevel; level++)
+                for (level = 1; level <= newlevel; level++)
                 {
-                    // currNode->forwards[level] = succs[level];
-                    // preds[level]->forwards[level] = currNode;
                     currNode->forwards[level] = preds[level]->forwards[level];
                     preds[level]->forwards[level] = currNode;
                 }
 
-                for (int level = 1; level <= highestLocked; level++)
+                for (level = 1; level <= highestLocked; level++)
                 {
                     preds[level]->unlock();
-                    succs[level]->unlock();
                 }
 
                 return;
@@ -314,10 +198,9 @@ public:
             catch (const std::exception &e)
             {
                 std::cerr << e.what() << '\n';
-                for (int level = 1; level <= highestLocked; level++)
+                for (level = 1; level <= highestLocked; level++)
                 {
                     preds[level]->unlock();
-                    succs[level]->unlock();
                 }
             }
         }
