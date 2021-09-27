@@ -1,7 +1,8 @@
+/** needed because otherwise the max level is initialized multiple times as the file is included in multiple files */
+#pragma once
 #include <iostream>
 #include <sstream>
 #include <pthread.h>
-#pragma once
 #define BILLION 1000000000L
 
 using namespace std;
@@ -122,17 +123,15 @@ public:
 
         int newlevel = randomLevel();
         int level;
+        int highestLocked;
+
+        bool valid;
 
         skiplist_node<K, V, MAXLEVEL> *succs[MAXLEVEL];
         skiplist_node<K, V, MAXLEVEL> *preds[MAXLEVEL];
-
         NodeType *predNode = m_pHeader;
         NodeType *currNode;
         NodeType *succNode;
-
-        int highestLocked = 0;
-
-        bool valid = true;
 
         while (true)
         {
@@ -156,8 +155,11 @@ public:
                 return;
             }
 
+            highestLocked = 0;
             try
             {
+
+                valid = true;
                 if (newlevel > max_curr_level)
                 {
                     max_curr_level = newlevel;
